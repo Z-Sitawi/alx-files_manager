@@ -1,6 +1,7 @@
 #!/usr/bin/node
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+/* eslint-disable-next-line no-unused-vars */
 
 class AppController {
   static getStatus(req, res) {
