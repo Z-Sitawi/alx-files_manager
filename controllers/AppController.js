@@ -2,6 +2,7 @@ import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
 class AppController {
+  // eslint-disable-next-line no-unused-vars
   static getStatus(req, res) {
     const redisStatus = redisClient.isAlive();
     const dbStatus = dbClient.isAlive();
