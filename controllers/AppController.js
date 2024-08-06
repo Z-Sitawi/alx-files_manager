@@ -1,6 +1,6 @@
 #!/usr/bin/node
-import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
 
 class AppController {
   static getStatus(req, res) {
