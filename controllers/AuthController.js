@@ -9,11 +9,8 @@ class AuthController {
     const login = req.header('Authorization').split(' ')[1];
     const [email, password] = Buffer.from(login, 'base64').toString('ascii').split(':');
 
-    if (!email) {
-      return res.status(400).json({ error: 'Missing email' });
-    }
-    if (!password) {
-      return res.status(400).json({ error: 'Missing password' });
+    if (!email || !password) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const user = await dbClient.dbClient.collection('users').findOne({ email, password: sha1(password) });
