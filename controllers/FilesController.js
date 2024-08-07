@@ -25,38 +25,36 @@ async function getUserByToken(req, res) {
 
 class FilesController {
   static async postUpload(req, res) {
-    const user = await getUserByToken(req, res);
+    const userId = await getUserByToken(req, res);
     const {
-      name, type, data, isPublic,
+      name, type, isPublic, data,
     } = req.body;
 
-    let parentId = req.body.parentId || '0';
-    const types = ['folder', 'file', 'image'];
-
     if (!name) return res.status(400).json({ error: 'Missing name' });
-    if (!type || !types.includes(type)) return res.status(400).json({ error: 'Missing type' });
+    if (!type || !['folder', 'file', 'image'].includes(type)) return res.status(400).json({ error: 'Missing type' });
+    if (!data && type !== 'folder') return res.status(400).json({ error: 'Missing data' });
 
-    if (type !== types[0] && !data) return res.status(400).json({ error: 'Missing data' });
-
+    let parentId = req.body.parentId || '0';
     if (parentId !== '0') {
-      console.log(parentId);
-      const file = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(parentId) });
-      if (!file) return res.status(400).json({ error: 'Parent not found' });
-      if (file.type !== types[0]) return res.status(400).json({ error: 'Parent is not a folder' });
+      const parentFile = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(parentId) });
+      if (!parentFile) return res.status(400).json({ error: 'Parent not found' });
+      if (parentFile.type !== 'folder') return res.status(400).json({ error: 'Parent is not a folder' });
     }
     parentId = parentId !== '0' ? ObjectId(parentId) : '0';
 
     const folderInfo = {
-      userId: ObjectId(user.id),
+      userId: ObjectId(userId),
       name,
       type,
       isPublic: isPublic || false,
       parentId,
     };
-
-    if (type === types[0]) {
-      const newFile = await dbClient.dbClient.collection('files').insertOne(folderInfo);
-      return res.status(201).json({ id: newFile.insertedId, ...folderInfo });
+    if (type === 'folder') {
+      const newFolder = await dbClient.dbClient.collection('files').insertOne({
+        userId, name, type, isPublic: isPublic || false, parentId,
+      });
+      folderInfo.parentId = parentId === '0' ? 0 : ObjectId(parentId);
+      return res.status(201).json({ id: newFolder.insertedId, ...folderInfo });
     }
 
     const folderName = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -68,6 +66,7 @@ class FilesController {
 
     const newFile = await dbClient.dbClient.collection('files').insertOne({ localPath, ...folderInfo });
 
+    folderInfo.parentId = parentId === '0' ? 0 : ObjectId(parentId);
     return res.status(201).json({ id: newFile.insertedId, localPath, ...folderInfo });
   }
 
