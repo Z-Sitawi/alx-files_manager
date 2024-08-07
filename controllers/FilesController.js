@@ -31,7 +31,6 @@ class FilesController {
     } = req.body;
 
     let parentId = req.body.parentId || '0';
-
     const types = ['folder', 'file', 'image'];
 
     if (!name) return res.status(400).json({ error: 'Missing name' });
