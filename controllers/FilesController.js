@@ -7,25 +7,14 @@ import dbClient from '../utils/db';
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
-async function getUserByToken(req, res) {
-  const token = req.header('X-Token');
-
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  const userId = await redisClient.get(`auth_${token}`);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  const ObjId = new ObjectId(userId);
-  const user = await dbClient.dbClient.collection('users').findOne({ _id: ObjId });
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  return { id: userId, email: user.email };
-}
-
 class FilesController {
   static async postUpload(req, res) {
-    const userId = await getUserByToken(req, res);
+    const token = req.header('X-Token');
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const userId = await redisClient.get(`auth_${token}`);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const {
       name, type, isPublic, data,
     } = req.body;
@@ -42,7 +31,7 @@ class FilesController {
     }
     parentId = parentId !== '0' ? ObjectId(parentId) : '0';
 
-    const folderInfo = {
+    const folderData = {
       userId: ObjectId(userId),
       name,
       type,
@@ -53,8 +42,8 @@ class FilesController {
       const newFolder = await dbClient.dbClient.collection('files').insertOne({
         userId, name, type, isPublic: isPublic || false, parentId,
       });
-      folderInfo.parentId = parentId === '0' ? 0 : ObjectId(parentId);
-      return res.status(201).json({ id: newFolder.insertedId, ...folderInfo });
+      folderData.parentId = parentId === '0' ? 0 : ObjectId(parentId);
+      return res.status(201).json({ id: newFolder.insertedId, ...folderData });
     }
 
     const folderName = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -62,12 +51,12 @@ class FilesController {
     const localPath = path.join(folderName, fileId);
 
     await fs.promises.mkdir(folderName, { recursive: true });
-    await fs.promises.writeFile(localPath, Buffer.from(data, 'base64'));
+    await fs.promises.writeFile(path.join(folderName, fileId), Buffer.from(data, 'base64'));
 
-    const newFile = await dbClient.dbClient.collection('files').insertOne({ localPath, ...folderInfo });
+    const newFile = await dbClient.dbClient.collection('files').insertOne({ localPath, ...folderData });
 
-    folderInfo.parentId = parentId === '0' ? 0 : ObjectId(parentId);
-    return res.status(201).json({ id: newFile.insertedId, localPath, ...folderInfo });
+    folderData.parentId = parentId === '0' ? 0 : ObjectId(parentId);
+    return res.status(201).json({ id: newFile.insertedId, localPath, ...folderData });
   }
 
   static async getShow(req, res) {
